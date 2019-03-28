@@ -12,10 +12,15 @@ class duskSpiderTest extends DuskTestCase
 {
 
     protected static $domain = '5balloons.info';  //Domain of the website to crawl
-    protected static $startUrl = 'https://www.5balloons.info';  //Starting point for your crawl process
-    protected static $totalPages = 50;  // Total pages to crawl , put large number to crawl all pages
+    protected static $startUrl = 'https://www.5balloons.info/';  //Starting point for your crawl process
+    protected static $totalPages = 300;  // Total pages to crawl , put large number to crawl all pages
     protected static $removeUrlParameter = true;    //Consider appened parameters to url duplicate if true
     protected static $excludeUrls = ['/category/'];  //Exclude URL that contains. 
+    protected static $includeUrls = ['/post/'];  //Only Include URL that contains
+
+    protected static $meta = []; /*['post-title' => 'h1.post-title',
+                              'views' => '.main-content > a:nth-child(7)'];*/
+    
 
 
     public function setUp(): void{
@@ -53,7 +58,7 @@ class duskSpiderTest extends DuskTestCase
             }
 
 
-        }catch(Exception $e){
+        }catch(\Exception $e){
 
         }
     }
@@ -64,27 +69,38 @@ class duskSpiderTest extends DuskTestCase
         if(Page::where('url', $currentUrl->url)->first()->isCrawled == true)
             return;
 
-        //Visit URL
-        $browser->visit($currentUrl->url);
+        try{
+                //Visit URL
+                $browser->visit($currentUrl->url);
+                
 
-        //Get Links and Save to DB if Valid
-        $linkElements = $browser->driver->findElements(WebDriverBy::tagName('a'));
-        
-        if(Page::count() < self::$totalPages){
-            foreach($linkElements as $element){
-                $href = $element->getAttribute('href');
-                $href = $this->trimUrl($href);
-                if($this->isValidUrl($href)){
-                    
-                    Page::create([
-                        'url' => $href,
-                        'isCrawled' => false,
-                    ]);
+                //Get Links and Save to DB if Valid
+                $linkElements = $browser->driver->findElements(WebDriverBy::tagName('a'));
+                
+                if(Page::count() < self::$totalPages){
+                    foreach($linkElements as $element){
+                        $href = $element->getAttribute('href');
+                        $href = $this->trimUrl($href);
+                        if($this->isValidUrl($href)){
+                            
+                            Page::create([
+                                'url' => $href,
+                                'isCrawled' => false,
+                            ]);
+                        }
+                    }
                 }
-            }
-        }
 
-        //Update current url status to crawled
+            //Check if $meta array is not empty
+            if(!empty(self::$meta)){
+                $metaArray = $this->getMeta($browser);   //Get Meta information from page 
+                $currentUrl->meta = $metaArray;         
+            }
+        }catch(\Exception $e){
+
+        }
+        
+        
         $currentUrl->isCrawled = true;
         $currentUrl->status  = $this->getHttpStatus($currentUrl->url);
         $currentUrl->title = $browser->driver->getTitle();
@@ -101,6 +117,12 @@ class duskSpiderTest extends DuskTestCase
             if(strpos($url, $excludeUrl))
                 return false;
         }    
+
+        foreach(self::$includeUrls as $includeUrl){
+            if(!strpos($url, $includeUrl))
+                return false;
+        } 
+
 
         $parsed_url = parse_url($url);
 
@@ -123,5 +145,18 @@ class duskSpiderTest extends DuskTestCase
     protected function getHttpStatus($url){
         $headers = get_headers($url, 1);
         return intval(substr($headers[0], 9, 3));
+    }
+
+    protected function getMeta($browser){
+        $metaArray = array();
+        foreach(self::$meta as $metaName => $elementPath){
+            //Check if element exist
+            try{
+            $metaArray[$metaName] = $browser->text($elementPath); 
+            }catch(\Facebook\WebDriver\Exception\NoSuchElementException $e){
+                $metaArray[$metaName] = 'Not Found'; 
+            }
+        }
+        return $metaArray;
     }
 }

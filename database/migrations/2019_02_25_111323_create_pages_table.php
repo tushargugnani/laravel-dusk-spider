@@ -17,6 +17,7 @@ class CreatePagesTable extends Migration
             $table->increments('id');
             $table->string('url','1024');
             $table->text('title')->nullable();
+            $table->json('meta')->nullable();
             $table->unsignedInteger('status')->nullable();
             $table->boolean('isCrawled');
             $table->timestamps();
