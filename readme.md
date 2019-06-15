@@ -18,6 +18,6 @@ Steps to Run the Tool on your Local.
 4. Run command `php artisan migrate`
 5. Open file `Tests/Browser/duskSpiderTest.php` and change variable `$domain` and `$startUrl` to website url you want to crawl
 6. Run command `php artisan dusk` to start crawling via dusk test.
-7. Crawled results will be saved in pages table in your database.
+7. Crawled results will be saved in pages table in your database and can be accessed via /results url.
 
 
